@@ -1,0 +1,341 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  AWS Admin - Full Stack
+Parameters:
+  VpcName:
+    Description: |
+      The VPC Name and the prefix used by the resources. Defaults to "admin-hub-nv"
+    Type: String
+    Default: "admin-hub-nv"
+  AwsRegion:
+    Description: |
+      The AWS Region. Defaults to N. Virginia.
+    Type: String
+    Default: "us-east-1"
+  VpcSubnetCidr:
+    Description: |
+      The VPC CIDR. Defaults to "192.168.255.0/24".
+    Type: String
+    Default: "192.168.255.0/24"
+  AllowedCidr:
+    Description: |
+      Source IP/Subnet allowed to reach the AWS Admin Task. Allow all by default.
+    Type: String
+    Default: "0.0.0.0/0"
+  Route53HostedZone:
+    Description: |
+      Route 53 Public Hosted Zone for the AWS Admin Task FQDN.
+    Type: String
+  Route53RecordName:
+    Description: |
+      AWS Admin Task FQDN for remote access and dynamic DNS updates.
+    Type: String
+  Route53RecordTtl:
+    Description: |
+      DNS Record TTL. Defaults to 60 seconds.
+    Type: String
+    Default: "60"
+  AuthorizedKeysFileBase64:
+    Description: |
+      SSH Public key in Base64 format. Example: "cat .ssh/mykey.pub | base64 -w 0"
+    Type: String
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcSubnetCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: "default"
+      Tags:
+      - Key: "Name"
+        Value: !Ref VpcName
+
+  SubnetPublicA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Join
+                        - ''
+                        - - !Ref AwsRegion
+                          - "a"
+      CidrBlock: !Ref VpcSubnetCidr
+      MapPublicIpOnLaunch: true
+      Tags:
+      - Key: "Name"
+        Value: !Join
+               - '-'
+               - - !Ref VpcName
+                 - "public-a"
+      VpcId: !Ref Vpc
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: "Name"
+        Value: !Join
+               - '-'
+               - - !Ref VpcName
+                 - "igw"
+
+  InternetGatewayAttach:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref Vpc
+
+  RouteTablePublic:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      Tags:
+      - Key: "Name"
+        Value: !Join
+               - '-'
+               - - !Ref VpcName
+                 - "public-rt"
+      VpcId: !Ref Vpc
+
+  RouteTableAssocPublic:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      SubnetId: !Ref SubnetPublicA
+
+  RoutePublicInternetGateway:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref RouteTablePublic
+
+  EfsAdminFs:
+    Type: AWS::EFS::FileSystem
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AvailabilityZoneName: !Join
+                            - ''
+                            - - !Ref AwsRegion
+                              - "a"
+      Encrypted: true
+      BackupPolicy:
+        Status: "DISABLED"
+      FileSystemTags:
+      - Key: "Name"
+        Value: !Join
+               - '-'
+               - - !Ref VpcName
+                 - "efs-admin-fs"
+      - Key: "auto-delete"
+        Value: "no"
+
+  S3EfsBackup:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Join
+                  - '-'
+                  - - !Ref VpcName
+                    - "efs-backup"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: "AES256"
+      Tags:
+      - Key: "Name"
+        Value: !Join
+               - '-'
+               - - !Ref VpcName
+                 - "efs-backup"
+      - Key: "auto-delete"
+        Value: "no"
+
+
+  SgSshHome:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allow SSH from HOME"
+      GroupName: !Join
+               - '-'
+               - - !Ref VpcName
+                 - "ssh-home-sg"
+      SecurityGroupIngress:
+      - CidrIp: !Ref AllowedCidr
+        IpProtocol: "tcp"
+        FromPort: 22
+        ToPort: 22
+      Tags:
+      - Key: "Name"
+        Value: !Join
+               - '-'
+               - - !Ref VpcName
+                 - "ssh-home-sg"
+      VpcId: !Ref Vpc
+
+  SgEfsAdminFs:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "EFS Admin HomeDir SG"
+      GroupName: !Join
+                 - '-'
+                 - - !Ref VpcName
+                   - "efs-sg"
+      SecurityGroupIngress:
+      - SourceSecurityGroupId: !Ref SgSshHome
+        IpProtocol: "tcp"
+        FromPort: 2049
+        ToPort: 2049
+      Tags:
+      - Key: "Name"
+        Value: !Join
+               - '-'
+               - - !Ref VpcName
+                 - "efs-sg"
+      VpcId: !Ref Vpc
+
+  EfsAdminFsMountPoint:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EfsAdminFs
+      SecurityGroups:
+      - !Ref SgEfsAdminFs
+      SubnetId: !Ref SubnetPublicA
+
+  EcsTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: "Allow"
+          Principal:
+            Service:
+            - "ecs-tasks.amazonaws.com"
+          Action:
+          - "sts:AssumeRole"
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      RoleName: !Join
+                   - '-'
+                   - - !Ref VpcName
+                     - "ecs-task-execution-role"
+
+  EcsAdminTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: "Allow"
+          Principal:
+            Service:
+            - "ecs-tasks.amazonaws.com"
+          Action:
+          - "sts:AssumeRole"
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AdministratorAccess
+      RoleName: !Join
+                   - '-'
+                   - - !Ref VpcName
+                     - "ecs-admin-task-role"
+
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      CapacityProviders:
+      - "FARGATE"
+      ClusterName: !Join
+                   - '-'
+                   - - !Ref VpcName
+                     - "ecs-cluster"
+      DefaultCapacityProviderStrategy:
+      - CapacityProvider: FARGATE
+        Weight: 1
+      Tags:
+      - Key: "auto-delete"
+        Value: "no"
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Ref VpcName
+      RetentionInDays: 7
+
+  EcsTaskDefinitionAdmin:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      RequiresCompatibilities:
+      - "FARGATE"
+      ContainerDefinitions:
+      - Name: "aws-admin"
+        Essential: true
+        PseudoTerminal: true
+        Interactive: true
+        Image: "public.ecr.aws/q8n5o3c1/aws-admin:latest"
+        Environment:
+        - Name: "R53_ZONE_ID"
+          Value: !Ref Route53HostedZone
+        - Name: "R53_REC_HOST"
+          Value: !Ref Route53RecordName
+        - Name: "R53_REC_TTL"
+          Value: !Ref Route53RecordTtl
+        - Name: "S3_EFS_BACKUP"
+          Value: !Ref S3EfsBackup
+        - Name: "AUTH_KEY_B64"
+          Value: !Ref AuthorizedKeysFileBase64
+        PortMappings:
+        - ContainerPort: 22
+        MountPoints:
+        - SourceVolume: "efs-homedir"
+          ContainerPath: "/root"
+        LogConfiguration:
+          LogDriver: "awslogs"
+          Options:
+            awslogs-region: !Ref AwsRegion
+            awslogs-group: !Ref VpcName
+            awslogs-stream-prefix: "aws-admin"
+      Cpu: "1024"
+      ExecutionRoleArn: !GetAtt EcsTaskExecutionRole.Arn
+      Memory: "2048"
+      NetworkMode: "awsvpc"
+      TaskRoleArn: !GetAtt EcsAdminTaskRole.Arn
+      Volumes:
+      - Name: "efs-homedir"
+        EFSVolumeConfiguration:
+          FilesystemId: !Ref EfsAdminFs
+          TransitEncryption: "ENABLED"
+      Tags:
+      - Key: "Name"
+        Value: !Join
+               - '-'
+               - - !Ref VpcName
+                 - "admin-td"
+      - Key: "auto-delete"
+        Value: "no"
+
+  EcsServiceAdmin:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref EcsCluster
+      DesiredCount: 1
+      EnableECSManagedTags: true
+      EnableExecuteCommand: true
+      LaunchType: "FARGATE"
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: "ENABLED"
+          SecurityGroups:
+          - !Ref SgSshHome
+          Subnets:
+          - !Ref SubnetPublicA
+      PropagateTags: "SERVICE"
+      ServiceName: !Join
+                   - '-'
+                   - - !Ref VpcName
+                     - "admin-service"
+      Tags:
+      - Key: "auto-delete"
+        Value: "no"
+      TaskDefinition: !Ref EcsTaskDefinitionAdmin

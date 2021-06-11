@@ -1,0 +1,8 @@
+STACK_NAME="coreos-builder"
+TEMPLATE_PATH="/path/to/cloudformation-template.yaml"
+PROJECTS_PATH="/path/to/projects"
+FEDORA_COREOS_VERSION="34.20210518.3.0" # https://getfedora.org/coreos?stream=stable
+PODMAN_KEY="/root/.ssh/podman"
+COREOS_ADDRESS="192.168.255.50"
+AWS_ACCOUNT="0123456789012"
+AWS_REGION="us-east-1"
