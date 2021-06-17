@@ -27,7 +27,7 @@ SSH administration container packed with various container utilities for managin
   Host aws-admin
     HostName aws-admin.domain.com
     User root
-    # Since the container will generate new SSH host keys every time it starts, alerting potential security breaches, it's useful to add the following lines:
+    # Since the container will generate new SSH host keys in every new version, alerting potential security breaches, it's useful to add the following lines:
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
   ```
