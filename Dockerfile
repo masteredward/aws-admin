@@ -38,7 +38,7 @@ RUN curl -LO https://github.com/argoproj/argo/releases/download/v${ARGO_CLI_VERS
 RUN curl -L https://amazon-ecs-cli.s3.amazonaws.com/ecs-cli-linux-amd64-latest -o /usr/local/bin/ecs-cli \
   && chmod +x /usr/local/bin/ecs-cli
 
-# EKSCLI install (latest)
+# EKSCTL install (latest)
 RUN curl -L https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_linux_amd64.tar.gz -o /tmp/eksctl.tar.gz \
   && tar xzf /tmp/eksctl.tar.gz -C /usr/local/bin \
   && rm -f /tmp/eksctl.tar.gz \
@@ -76,7 +76,8 @@ RUN usermod -s /usr/bin/zsh root
 COPY /entrypoint.sh /entrypoint.sh
 COPY /utils/podman-build.sh /usr/local/bin/podman-build
 COPY /utils/kubectl-version.sh /usr/local/bin/kubectl-version
-RUN chmod +x /entrypoint.sh /usr/local/bin/podman-build /usr/local/bin/kubectl-version
+COPY /utils/eks-endpoint.sh /usr/local/bin/eks-endpoint
+RUN chmod +x /entrypoint.sh /usr/local/bin/podman-build /usr/local/bin/kubectl-version /usr/local/bin/eks-endpoint
 EXPOSE 22
 WORKDIR /root
 CMD ["/entrypoint.sh"]
