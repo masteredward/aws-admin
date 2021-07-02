@@ -1,6 +1,4 @@
 FROM fedora
-ARG ARGO_CLI_VERSION="3.1.1"
-ARG K9S_VERSION="0.24.11"
 ARG KUBECTL_DEFAULT_VERSION="1.20"
 ENV R53_ZONE_ID="ZXXXXXXXXXXXXXXXXXXXX" \
     R53_REC_HOST="admin-xxx.domain.com" \
@@ -27,8 +25,8 @@ RUN curl -L https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip -o /tmp/aws
   && /tmp/aws/install --update \
   && rm -rf awscli.zip /tmp/aws
 
-# Argo CLI install (Uses ARG for version)
-RUN curl -LO https://github.com/argoproj/argo/releases/download/v${ARGO_CLI_VERSION}/argo-linux-amd64.gz \
+# Argo CLI install (latest)
+RUN curl -LO https://github.com/argoproj/argo-workflows/releases/latest/download/argo-linux-amd64.gz \
   && gunzip argo-linux-amd64.gz \
   && rm -f argo-linux-amd64.gz \
   && chmod +x argo-linux-amd64 \
@@ -47,9 +45,9 @@ RUN curl -L https://github.com/weaveworks/eksctl/releases/latest/download/eksctl
 # HELM v3 install (latest)
 RUN curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash
 
-# K9s install (Uses ARG for version - Not possible to use latest after version 0.24.10)
+# K9s install (latest)
 RUN mkdir /tmp/k9s \
-  && curl -L https://github.com/derailed/k9s/releases/download/v${K9S_VERSION}/k9s_v${K9S_VERSION}_Linux_x86_64.tar.gz -o /tmp/k9s/k9s.tar.gz \
+  && curl -L https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_x86_64.tar.gz -o /tmp/k9s/k9s.tar.gz \
   && tar xvf /tmp/k9s/k9s.tar.gz -C /tmp/k9s \
   && mv /tmp/k9s/k9s /usr/local/bin \
   && rm -rf /tmp/k9s \
