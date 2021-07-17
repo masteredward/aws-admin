@@ -1,8 +1,13 @@
-STACK_NAME="coreos-builder"
-TEMPLATE_PATH="/path/to/cloudformation-template.yaml"
-PROJECTS_PATH="/path/to/projects"
-FEDORA_COREOS_VERSION="34.20210626.1.0" # https://getfedora.org/coreos?stream=next
-PODMAN_KEY="/root/.ssh/podman"
-COREOS_ADDRESS="192.168.255.50"
-AWS_ACCOUNT="0123456789012"
-AWS_REGION="us-east-1"
+# LOCAL PATHS
+TEMPLATE_PATH="/root/cloudformation/podman-builder.yaml"
+PROJECTS_PATH="/root/projects"
+PODMAN_KEY="/root/.ssh/podman" # ssh-keygen -t ed25519 -f ~/.ssh/podman -C "podman-build-key"
+
+# CloudFormation Stack Options
+STACK_PREFIX="admin-hub-podman-builder"
+SSH_PUBKEY_NAME="mykeynameonec2" # SSH Public Key already added to the AWS Account in EC2 Key Pairs section
+INSTANCE_TYPE="t3a.medium"
+INSTANCE_VOLUME_SIZE=20
+
+# AWS Information
+AWS_ACCOUNT="0123456789"

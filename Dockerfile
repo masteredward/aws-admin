@@ -10,7 +10,7 @@ ENV R53_ZONE_ID="ZXXXXXXXXXXXXXXXXXXXX" \
 RUN dnf group install "C Development Tools and Libraries" -y \
   && dnf install zsh git unzip openssl podman-remote ruby-devel zlib-devel bind-utils python3-pip jq rsync openssh-server passwd nano dnf-plugins-core iproute procps-ng nmap iputils hostname net-tools htop iptraf-ng -y \
   && dnf config-manager --add-repo https://rpm.releases.hashicorp.com/fedora/hashicorp.repo \
-  && dnf install packer -y \
+  && dnf install packer terraform -y \
   && dnf clean all
 
 # PIP packages
@@ -72,7 +72,7 @@ RUN usermod -s /usr/bin/zsh root
 
 # Entrypoint, utilities and final adjustments
 COPY /entrypoint.sh /entrypoint.sh
-COPY /utils/podman-build.sh /usr/local/bin/podman-build
+COPY /podman-build/podman-build.sh /usr/local/bin/podman-build
 COPY /utils/kubectl-version.sh /usr/local/bin/kubectl-version
 COPY /utils/eks-endpoint.sh /usr/local/bin/eks-endpoint
 RUN chmod +x /entrypoint.sh /usr/local/bin/podman-build /usr/local/bin/kubectl-version /usr/local/bin/eks-endpoint

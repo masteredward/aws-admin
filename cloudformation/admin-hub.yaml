@@ -273,7 +273,7 @@ Resources:
         Essential: true
         PseudoTerminal: true
         Interactive: true
-        Image: "public.ecr.aws/q8n5o3c1/aws-admin:latest"
+        Image: "public.ecr.aws/masteredward/aws-admin:latest"
         Environment:
         - Name: "R53_ZONE_ID"
           Value: !Ref Route53HostedZone

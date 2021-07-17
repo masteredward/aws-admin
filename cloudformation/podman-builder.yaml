@@ -5,43 +5,29 @@ Description: |
 Parameters:
   VpcId:
     Type: String
-  VpcName:
-    Type: String
-    Default: "admin-hub-nv"
   SubnetId:
     Type: String
   AllowedCidr:
     Type: String
-    Default: "0.0.0.0/0"
-  FedoraCoreOSIpAddress:
-    Type: String
-    Default: "192.168.255.50"
-  AMI:
-    Type: "AWS::EC2::Image::Id"
   InstanceType:
     Type: String
-    Default: "t3a.medium"
+  InstanceVolumeSize:
+    Type: Number
+  AMI:
+    Type: "AWS::EC2::Image::Id"
+  SshPubkeyName:
+    Type: String
 
 Resources:
   FedoraCoreOsSg:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: "Allow SSH from admin containers"
-      GroupName: !Join
-                 - '-'
-                 - - !Ref VpcName
-                   - "fedora-coreos-sg"
       SecurityGroupIngress:
       - CidrIp: !Ref AllowedCidr
         IpProtocol: "tcp"
         FromPort: 22
         ToPort: 22
-      Tags:
-      - Key: "Name"
-        Value: !Join
-               - '-'
-               - - !Ref VpcName
-                 - "fedora-coreos-sg"
       VpcId: !Ref VpcId
 
   FedoraCoreOsInstance:
@@ -52,24 +38,19 @@ Resources:
         Ebs:
           VolumeType: "gp2"
           DeleteOnTermination: true
-          VolumeSize: 20
+          VolumeSize: !Ref InstanceVolumeSize
       ImageId: !Ref AMI
       InstanceInitiatedShutdownBehavior: "terminate"
       InstanceType: !Ref InstanceType
-      KeyName: "silduar"
+      KeyName: !Ref SshPubkeyName
       NetworkInterfaces: 
       - AssociatePublicIpAddress: true
         DeviceIndex: "0"
         GroupSet: 
         - !Ref FedoraCoreOsSg
         SubnetId: !Ref SubnetId
-        PrivateIpAddress: !Ref FedoraCoreOSIpAddress
         DeleteOnTermination: true
-      Tags:
-      - Key: "Name"
-        Value: !Join
-               - '-'
-               - - !Ref VpcName
-                 - "fedora-coreos"
-      - Key: "auto-delete"
-        Value: "no"
+
+Outputs:
+  FedoraCoreOsInstance:
+    Value: !GetAtt FedoraCoreOsInstance.PrivateIp
