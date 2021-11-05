@@ -1,5 +1,5 @@
 FROM fedora:34
-ARG KUBECTL_DEFAULT_VERSION="1.20"
+ARG KUBECTL_DEFAULT_VERSION="1.21"
 ENV R53_ZONE_ID="ZXXXXXXXXXXXXXXXXXXXX" \
     R53_REC_HOST="admin-xxx.domain.com" \
     R53_REC_TTL="60" \
@@ -53,9 +53,10 @@ RUN mkdir /tmp/k9s \
   && rm -rf /tmp/k9s \
   && chmod +x /usr/local/bin/k9s
 
-# AWS-built kubectl install (From 1.16 to 1.20 - Uses links from https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html)
+# AWS-built kubectl install (From 1.16 to 1.21 - Uses links from https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html)
 # Uses a symbolic link to change the current version. Defaults to ARG)
-RUN curl -L https://amazon-eks.s3.us-west-2.amazonaws.com/1.20.4/2021-04-12/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl-1.20 \
+RUN curl -L https://amazon-eks.s3.us-west-2.amazonaws.com/1.21.2/2021-07-05/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl-1.21 \
+  && curl -L https://amazon-eks.s3.us-west-2.amazonaws.com/1.20.4/2021-04-12/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl-1.20 \
   && curl -L https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl-1.19 \
   && curl -L https://amazon-eks.s3.us-west-2.amazonaws.com/1.18.9/2020-11-02/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl-1.18 \
   && curl -L https://amazon-eks.s3.us-west-2.amazonaws.com/1.17.12/2020-11-02/bin/linux/amd64/kubectl -o /usr/local/bin/kubectl-1.17 \
